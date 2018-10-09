@@ -17,3 +17,5 @@
 (cmd-hook ["sed" #"^sed"]
           #"^s\/(.+)\/(.*)" sed-cmd)
 
+;; Example
+;;(sed-cmd {:raw "foobar" :match ["s" "foo" "bar"]})
