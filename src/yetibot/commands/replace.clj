@@ -9,3 +9,6 @@
   (let [up (if (some? u) s/upper-case rep)
         rp (s/replace string find up)]
     rp))
+
+(cmd-hook #"replace"
+          #"(\S+)\s+(\S)" replace-cmd)
