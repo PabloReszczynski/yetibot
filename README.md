@@ -30,35 +30,34 @@ You can think of Yetibot as a **communal command line**. It excels at:
 
 Features that make Yetibot powerful and great, which is to say *fun*:
 
-- **Unix-style pipes** allow tremendous expressiveness in chaining
-  together complex and flexible commands.
-- **Sub-expressions** let you embed the output of one command into an outer
-  command. They can be nested as many levels deep as you can imagine (open a PR
-  to add to [EXAMPLES](doc/EXAMPLES.md) if you come up with something crazy!).
-- **Aliases** let you parameterize complex expressions and give them a name
-  allowing your team to quickly build up idiomatic team-specific Yetibot usages
-  (not just memes!).
-- **Per-channel settings** let you store arbitrary config at the channel level,
-  which can be used by commands or aliases to change the behavior of commands
-  depending on which channel you're in (e.g. the default JIRA project for a
-  channel).
-- **Feature category toggle** lets you disable or enable entire
-  [categories](https://github.com/yetibot/yetibot.core/blob/master/doc/CATEGORIES.md)
-  of commands per-channel; useful for disabling gifs in the work-only channel 😁.
+- [**Unix-style pipes**](https://yetibot.com/user-guide#pipes) allow tremendous
+  expressiveness in chaining together complex and flexible commands.
+- [**Sub-expressions**](https://yetibot.com/user-guide#subexpressions) let you
+  embed the output of one command into an outer command. They can be nested as
+  many levels deep as you can imagine (open a PR to add to
+  [EXAMPLES](https://yetibot.com/user-guide#examples) if you come up with
+  something crazy!).
+- [**Aliases**](https://yetibot.com/user-guide#aliases) let you parameterize
+  complex expressions and give them a name allowing your team to quickly build
+  up idiomatic team-specific Yetibot usages (not just memes!).
+- [**Per-channel settings**](https://yetibot.com/user-guide#channel_settings)
+  let you store arbitrary config at the channel level, which can be used by
+  commands or aliases to change the behavior of commands depending on which
+  channel you're in (e.g. the default JIRA project(s) for a channel).
+- [**Feature category toggle**](https://yetibot.com/user-guide#categories) lets
+  you disable or enable entire categories of commands per-channel; useful for
+  disabling gifs in the work-only channel 😁.
 
-Take a look at the [usage examples](doc/EXAMPLES.md) to see some ~~fun~~ useful
-ways it can be used.
+Take a look at the [usage examples](https://yetibot.com/user-guide#examples) to
+see some ~~fun~~ useful things it can do.
 
-## Hacktoberfest
+## New contributors
 
-Welcome Hacktoberfest Clojurists!
-
-<img src="https://hacktoberfest.digitalocean.com/assets/logo-hacktoberfest-658b5aa2bd34e782d29c40bf6afbdff00f20fe1328efa6da17743878ba8db66f.png" />
+Welcome new contributors!
 
 - Feel free to tackle [any issue](https://github.com/yetibot/yetibot/issues)
-- Issues [labeled
-  Hacktoberfest](https://github.com/yetibot/yetibot/labels/Hacktoberfest) are
-  good for first time Yetibot contributors
+- Issues labeled [`good first issue`](https://github.com/yetibot/yetibot/labels/good%20first%20issue)
+  are good for first time Yetibot contributors
 - Ask `@devth` for help on [Slack](https://slack.yetibot.com/), GitHub or
   anywhere else you can find him
 
@@ -92,7 +91,8 @@ Yetibot has been undergoing continuous improvement since its inception. These
 are the immediate priorities, in addition to any bug fixes. Feedback and
 contributions are very welcome!
 
-- [ ] Write docs on how to develop Yetibot
+- [x] Write docs on how to develop Yetibot - See the [Dev
+  Guide](https://yetibot.com/dev-guide)
 - [x] Dockerize Yetibot. Done! Check out [the instructions](doc/DOCKER.md).
 - [x] Integrate with [StackStorm](https://stackstorm.com/) for automation on
       steriods. Done! Check out
@@ -101,8 +101,8 @@ contributions are very welcome!
 - [ ] Make adapters plugable
 - [ ] Create more examples of plugins (e.g. Travis)
 - [x] Run a demo Yetibot instance — you can now talk to a Yetibot on Freenode in
-  the `#yetibot` channel!
-- [ ] Design & build yetibot.com — <em>In progress!</em>
+  the `#yetibot` channel or join [Yetibot Slack](https://slack.yetibot.com)!
+- [x] Design & build [yetibot.com](https://yetibot.com) — <em>Done!</em>
 - [x] Flatten the config and obtain it via
   [environ](https://github.com/weavejester/environ) to follow [12 Factor
   App](http://12factor.net/config) practices
@@ -128,11 +128,11 @@ There are a few ways to run Yetibot:
 
 ## Configuration
 
-See the
-[CONFIGURATION](https://github.com/yetibot/yetibot.core/blob/master/doc/CONFIGURATION.md)
-docs.
+See [Configuration docs](https://yetibot.com/ops-guide#configuration).
 
 ## Usage
+
+For more docs see the [User Guide](https://yetibot.com/user-guide).
 
 All commands are prefixed by `!`.
 
@@ -323,7 +323,7 @@ issue for feature requests!
 
 ## License
 
-Copyright &copy; 2012-2018 Trevor Hartman. Distributed under the [Eclipse Public
+Copyright &copy; 2012-2019 Trevor Hartman. Distributed under the [Eclipse Public
 License 1.0](http://opensource.org/licenses/eclipse-1.0.php), the same as
 Clojure.
 

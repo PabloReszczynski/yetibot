@@ -1,100 +1,128 @@
 (ns yetibot.commands.weather
   (:require
     [schema.core :as sch]
-    [clojure.string :refer [join]]
-    [yetibot.core.util.http :refer [get-json fetch encode map-to-query-string]]
+    [clojure.string :as str]
+    [clj-http.client :as http.client]
     [taoensso.timbre :refer [info warn error]]
     [yetibot.core.config :refer [get-config]]
-    [yetibot.core.hooks :refer [cmd-hook]]))
+    [yetibot.core.hooks :refer [cmd-hook]]
+    [yetibot.models.postal-code :refer [chk-postal-code]]
+    [yetibot.commands.weather.formatters :as fmt]))
 
-(def config (:value (get-config sch/Any [:weather :wunderground])))
+(def config (:value (get-config sch/Any [:weather :weatherbitio])))
 
 (def api-key (:key config))
 (def default-zip (-> config :default :zip))
 
-(defn endpoint [url & args]
-  (str "http://api.wunderground.com/api/" api-key (apply format url args)))
+(defn get-json
+  [uri {:keys [query-params] :as opts}]
+  (try
+    (let [options (merge {:as :json :coerce :always}
+                         opts
+                         {:query-params (merge {:key api-key :units "M"}
+                                               query-params)})
+          {:keys [status body]} (http.client/get uri options)]
+      (condp = status
+        200 body
+        204 {:error "Location not found."}))
+    (catch Exception e
+      (let [{:keys [status body]} (ex-data e)]
+        (error "Request failed with status:" status)
+        body))))
 
-(defn loc-endpoint [api loc]
-  (endpoint "%s/q/%s.json" api (encode loc)))
+(defn- endpoint
+  "API docs: https://www.weatherbit.io/api"
+  [path]
+  (str "https://api.weatherbit.io/v2.0/" path))
 
-(defn- conditions [loc]
-  (let [url (endpoint "/conditions/q/%s.json" (encode loc))]
-    (get-json url)))
+(defn- get-by-name
+  "Get current conditions by location name str"
+  [path city]
+  (get-json (endpoint path) {:query-params {:city city}}))
 
-(defn- cams [loc]
-  (let [url (endpoint "/webcams/q/%s.json" (encode loc))]
-    (get-json url)))
+(defn- get-by-pc
+  "Get current conditions by post code and country code"
+  [path pc cc]
+  (get-json (endpoint path) {:query-params {:postal_code pc
+                                            :country cc}}))
 
-(defn- forecast [loc] (get-json (loc-endpoint "/forecast" loc)))
+(defn- get-by-loc
+  "Attempt to parse out postal code and call the corresponding get-by-name or
+   get-by-pc function"
+  [path loc]
+  (let [[_ pc-or-loc maybe-cc] (re-matches #"(.+?)(?:,\s*([^,]+))?" (str loc))]
+    (if-let [[pc cc] (chk-postal-code pc-or-loc maybe-cc)]
+      (get-by-pc path pc cc)
+      (get-by-name path loc))))
 
-(defn- satellite [loc]
-  (str (endpoint "/animatedradar/animatedsatellite/q/%s.gif" (encode loc))
-       "?" (map-to-query-string {:num 10})))
+(defn- error-response [{:keys [error status_code status_message]}]
+  (cond
+    error {:result/error error}
+    (= 429 status_code) {:result/error status_message}))
 
-(defn- error-response [c] (-> c :response :error :description))
+(defn- format-current
+  [formatters c]
+  (cons (fmt/location-title c)
+        (map #(% formatters c) [fmt/summary
+                                fmt/feels-like
+                                fmt/wind])))
 
-(defn- format-city-state-country [res]
-  (if (= "USA" (:country_name res))
-    (str (:city res) ", " (:state res))
-    (str (:city res)
-         (when (:state res) (str ", " (:state res)))
-         (:country_name res))))
+(defn current
+  [loc]
+  (get-by-loc "current" loc))
 
-(defn- multiple-results [c]
-  (when-let [rs (-> c :response :results)]
-    (str "Found multiple locations: "
-         (join "; " (map format-city-state-country rs)))))
+(defn forecast
+  [loc]
+  (get-by-loc "forecast/daily" loc))
 
-(defn- format-conditions [c]
-  (when-let [co (:current_observation c)]
-    (let [loc (:observation_location co)]
-      [(format "Current conditions for %s elevation %s:" (:full loc) (:elevation loc))
-       (format "%s, %s" (:temperature_string co) (:weather co))
-       (format "Feels like: %s" (:feelslike_string co))
-       (format "Windchill: %s" (:windchill_string co))
-       (format "Wind: %s" (:wind_string co))
-       (format "Precip last hour: %s" (:precip_1hr_string co))
-       ])))
-
-(defn- format-webcams [res]
-  (when-let [cams (:webcams res)]
-    (map (juxt (fn [c] (str (:CURRENTIMAGEURL c) "&.jpg")) :neighborhood) cams)))
+(defn parse-args
+  "parse args to vec of unit kw and args str"
+  [s]
+  (let [[_ unit args] (re-matches #"(?i)(?:\s*(-[micf]))?\s*(.+)", s)
+        unit (when-not (nil? unit)
+               (if (or (= unit "-i") (= unit "-f")) :i :m))]
+    [unit args]))
 
 (defn weather-cmd
-  "weather <location> # look up current weather for <location>"
+  "weather <location> # look up current weather for <location> by name or postal code, optional country code, -c or -f to force units"
   {:yb/cat #{:info}}
   [{:keys [match]}]
-  (let [cs (conditions match)]
+  (let [[unit loc] (parse-args match)
+        result (current loc)]
     (or
-      (error-response cs)
-      (multiple-results cs)
-      (format-conditions cs))))
+      (error-response result)
+      (let [{[cs] :data} result
+            formatters (fmt/get-formatters unit (:country_code cs))]
+        {:result/value (format-current formatters cs)
+         :result/data cs}))))
 
 (defn default-weather-cmd
   "weather # look up weather for default location"
   {:yb/cat #{:info}}
-  [_] (weather-cmd {:match default-zip}))
+  [_]
+  (if default-zip
+    (weather-cmd {:match default-zip})
+    {:result/error "A default zip code is not configured.
+                    Configure it at path weather.weatherbitio.default.zip"}))
 
-(defn cams-cmd
-  "weather cams <location> # find web cams in <location>"
-  {:yb/cat #{:info :img}}
-  [{[_ loc] :match}]
-  (let [res (cams loc)]
-    (or (error-response res)
-        (multiple-results res)
-        (format-webcams res))))
+(defn forecast-cmd
+  "weather forecast <location> # look up forecast for <location> by name or postal code, optional country code, -c or -f to force units"
+  {:yb/cat #{:info}}
+  [{[_ match] :match}]
+  (let [[unit loc] (parse-args match)
+        result (forecast loc)]
+    (or
+      (error-response result)
+      (let [{:keys [city_name country_code data]} result
+            formatters (fmt/get-formatters unit country_code)
+            location (fmt/location-title result)]
+        {:result/value (into [location]
+                             (map
+                               (partial fmt/forecast-item formatters)
+                               data))
+         :result/data result}))))
 
-(defn satellite-cmd
-  "weather sat <location> # look up satellite image for <location>"
-  {:yb/cat #{:info :gif :img}}
-  [{[_ loc] :match}]
-  ; TODO: validate the loc. Currently this will 500 if the loc is not valid.
-  (satellite loc))
-
-(cmd-hook ["weather" #"^weather$"]
-  #"cams\s+(.+)" cams-cmd
-  #"sat\s+(.+)" satellite-cmd
+(cmd-hook #"weather"
+  #"forecast\s+(.+)" forecast-cmd
   #".+" weather-cmd
   _ default-weather-cmd)
-

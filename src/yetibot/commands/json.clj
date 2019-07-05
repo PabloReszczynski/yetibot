@@ -10,17 +10,21 @@
   "json path <path> # select <path> against piped data structure; see https://github.com/gga/json-path for supported syntax"
   [{[_ path] :match json :opts}]
   (if (coll? json)
-    (jp/at-path path json)
+    (let [res (jp/at-path path json)]
+      (if (coll? res)
+        res
+        ;; always return individual values as strings
+        (str res)))
     (str "Not a valid json data structure:" (pr-str json))))
 
 (defn json-cmd
   "json <url> # parse json from <url>"
   [{[url] :match}]
-  (info "json" url)
+  (info "json" (pr-str url))
   (-> (client/get url)
       :body
       (clojure.string/replace  #"\uFEFF" "")
-      json/read-str))
+      (json/read-str :key-fn keyword)))
 
 (defn json-parse-cmd
   "json parse <json>"

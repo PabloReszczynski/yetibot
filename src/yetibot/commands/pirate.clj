@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.edn :as edn]
    [clojure.string :as str]
-   [clj-time.core :as t]))
+   [clj-time.core :as time]))
 
 ;; TODO - Let's derive this from properties of the requesting user.  I
 ;; think this is pretty straightforward with Slack but I have to give
@@ -61,8 +61,8 @@
 (defn probability
   "Return probability, by hour, for configured TZ."
   []
-  (let [hour (-> (t/to-time-zone (t/now) (t/time-zone-for-id local-tz))
-                 t/hour)]
+  (let [hour (-> (time/to-time-zone (time/now) (time/time-zone-for-id local-tz))
+                 time/hour)]
     (nth (concat (repeat 8 0.95)
                  (repeat 8 0.25)
                  (repeat 8 0.75))
@@ -73,18 +73,19 @@
   [s]
   (let [flavor (rand-nth flavor)]
     (str/replace-first s
-                       #"[.!?]*$"
-                       #(format ", %s%s" flavor %))))
+                       #"([.!?]*)\s*$"
+                       (fn [[_ punc]]
+                         (format ", %s%s" flavor punc)))))
 
-(def slur-re #"[alr]")
+(def slur-re #"[alr](?![alr])")
 
 (defn- mk-slur-map
   "Return randomly ordered v of true and nil.  The number of trues is a
   configurable percentage of n, plus some fuzz.  The balance of n are
   nils."
   [n]
-  (let [perc 0.7
-        fuzz (rand 0.3)
+  (let [perc 0.45
+        fuzz (rand 0.5)
         min-t (* perc n)
         max-f (- n min-t)
         t (-> (* fuzz max-f) (+ min-t) Math/round)
@@ -126,13 +127,17 @@
     s))
 
 (defn pirate-cmd
-  "pirate <string> # translate string into proper pirate, yar <string>"
+  "pirate <string> # translate string into proper pirate, yar"
   {:yb/cat #{:info}}
-  [{:keys [match]}]
-  (let [prob (probability)]
-    (-> (to-pirate match)
-        (if-prob suffix-flavor prob)
-        (if-prob slurrr prob))))
+  [{s :match}]
+  (let [prob (probability)
+        trans (-> (to-pirate s)
+                  (if-prob suffix-flavor prob)
+                  (if-prob slurrr prob))]
+    {:result/value trans
+     :result/data {:original s
+                   :translation trans
+                   :variation prob}}))
 
 (cmd-hook #"pirate"
   #".+" pirate-cmd)

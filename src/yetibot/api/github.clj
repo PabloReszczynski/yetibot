@@ -3,6 +3,8 @@
     [taoensso.timbre :refer [info warn error]]
     [schema.core :as sch]
     [yetibot.core.schema :refer [non-empty-str]]
+    [clojure.data.csv :as csv]
+    [clojure.java.io :as io]
     [tentacles
      [core :refer [with-url]]
      [search :as search]
@@ -15,8 +17,9 @@
      [orgs :as o]]
     [clojure.string :as s]
     [clj-http.client :as client]
+    [graphql-query.core :refer [graphql-query]]
     [yetibot.core.config :refer [get-config]]
-    [yetibot.core.util.http :refer [fetch]]))
+    [yetibot.core.util.http :refer [encode]]))
 
 ;;; uses tentacles for most api calls, but falls back to raw REST calls when
 ;;; tentacles doesn't support something (like Accept headers for raw blob
@@ -27,6 +30,7 @@
 (def github-schema
   {:token non-empty-str
    :org [non-empty-str]
+   (sch/optional-key :graphql) {:endpoint non-empty-str}
    (sch/optional-key :endpoint) non-empty-str})
 
 (defn config [] (:value (get-config github-schema [:github])))
@@ -48,6 +52,38 @@
 ;                   #(= (:login %) org-name)
 ;                   (o/orgs auth))))
 
+
+;; graphql examples
+
+(defn contrib-query [username]
+  (str "query {
+      user(login: \\\"" username "\\\") {
+        login
+        repositoriesContributedTo(first: 100,
+                                  includeUserRepositories: false,
+                                  contributionTypes: [COMMIT, PULL_REQUEST]) {
+          totalCount
+          nodes {
+            nameWithOwner
+            owner {
+              ... on Organization {
+                name
+              }
+            }
+          }
+        }
+      }
+    }"))
+
+(defn graphql [query]
+  (client/post
+    (-> (config) :graphql :endpoint)
+    {:headers {"Authorization" (str "bearer " (:token (config)))}
+     :body (str "{\"query\": \"" (s/replace query #"\n" "") "\"}")
+     :as :json}))
+
+(defn email->username [email]
+  (first (s/split email #"\@")))
 
 ;;; data
 
@@ -88,9 +124,20 @@
 ;;; repos
 
 (defn repos [org-name]
-  (remove :fork (remove empty?
-                  (with-url endpoint
-                    (r/org-repos org-name (merge auth {:per-page 100}))))))
+  (with-url
+    endpoint
+    (r/org-repos
+      org-name (merge auth {:per-page 100}))))
+
+(comment
+
+  (with-url
+    endpoint
+    (r/org-repos
+      "yetibot" (merge auth {:per-page 100})))
+
+  )
+
 
 (defn repos-by-org []
   (into {} (for [org-name (org-names)]
@@ -115,6 +162,18 @@
 (defn code-frequency [org-name repo]
   (with-url endpoint
     (r/code-frequency org-name repo auth)))
+
+(defn latest-releases [org-name repo]
+  (with-url endpoint
+    (r/specific-release org-name repo "latest" auth)))
+
+(defn release-by-tag [org-name repo tag]
+  (with-url endpoint
+    (r/specific-release-by-tag org-name repo tag auth)))
+
+(defn releases [org-name repo]
+  (with-url endpoint
+    (r/releases org-name repo auth)))
 
 (defn sum-weekly
   "Takes the weekly stats for an author and sums them into:
@@ -182,6 +241,18 @@
                           (merge {:state "open" :type "pr" :user org-name} opts)
                           (merge {:sort "created"} auth))))
 
+(defn search-code [keywords & [query opts]]
+  (with-url endpoint
+            (search/search-code
+              keywords (merge {} query) auth)))
+
+(comment
+
+  (search-pull-requests "yetibot" "")
+
+  (search-code "org:yetibot cmd-hook")
+
+  )
 
 ;;; events / feed
 

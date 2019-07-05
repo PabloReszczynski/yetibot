@@ -1,4 +1,6 @@
-FROM clojure:lein-2.8.1
+FROM clojure:openjdk-11-lein
+
+# Yetibot needs curl. If we ever switch to alpine, make sure to install it.
 
 MAINTAINER Trevor Hartman <trevorhartman@gmail.com>
 
@@ -31,4 +33,4 @@ VOLUME $WORKDIR/config/
 
 VOLUME $LOGDIR
 
-CMD ["lein", "run"]
+CMD ["lein", "with-profile", "+docker", "run"]
