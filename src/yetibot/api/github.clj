@@ -1,8 +1,8 @@
 (ns yetibot.api.github
   (:require
     [taoensso.timbre :refer [info warn error]]
-    [schema.core :as sch]
-    [yetibot.core.schema :refer [non-empty-str]]
+    [clojure.spec.alpha :as s]
+    [yetibot.core.spec :as yspec]
     [clojure.data.csv :as csv]
     [clojure.java.io :as io]
     [tentacles
@@ -15,7 +15,7 @@
      [events :as e]
      [data :as data]
      [orgs :as o]]
-    [clojure.string :as s]
+    [clojure.string :as string]
     [clj-http.client :as client]
     [graphql-query.core :refer [graphql-query]]
     [yetibot.core.config :refer [get-config]]
@@ -27,20 +27,40 @@
 
 ;;; config
 
-(def github-schema
-  {:token non-empty-str
-   :org [non-empty-str]
-   (sch/optional-key :graphql) {:endpoint non-empty-str}
-   (sch/optional-key :endpoint) non-empty-str})
+(s/def ::token ::yspec/non-blank-string)
 
-(defn config [] (:value (get-config github-schema [:github])))
+(s/def ::org (s/or ::yspec/non-blank-string
+                   (s/coll-of ::yspec/non-blank-string)))
+
+(s/def ::endpoint ::yspec/non-blank-string)
+
+(s/def ::graphql (s/keys :req-un [::endpoint]))
+
+(s/def ::config (s/keys :req-un [::token ::org]
+                        :opt-un [::graphql ::endpoint]))
+
+(defn config [] (:value (get-config ::config [:github])))
 (defn configured? [] (config))
-(def endpoint (or (:endpoint (config)) "https://api.github.com/"))
+(def config-endpoint (:endpoint (config)))
+(def endpoint (or config-endpoint "https://api.github.com/"))
+
+(def enterprise?
+  "GitHub Enterprise does not have full parity with github.com so sometimes we
+   may need to adjust logic or URLs for enterprise, such as when exploring
+   topics."
+  (and config-endpoint
+       (not (re-find #"^https://api.github.com" endpoint))))
+
+(def github-web-url
+  "Infer the GitHub instance's web URL from the configured endpoint."
+  (if config-endpoint
+    (string/replace config-endpoint #"/api/v3/+$" "")
+    "https://github.com"))
 
 (def token (:token (config)))
 (def auth {:oauth-token token})
 (future
-  (def user (with-url endpoint (u/me auth)))
+  (defonce user (with-url endpoint (u/me auth)))
   (def user-name (:login user)))
 
 ; ensure org-names is a sequence; config allows either
@@ -79,11 +99,11 @@
   (client/post
     (-> (config) :graphql :endpoint)
     {:headers {"Authorization" (str "bearer " (:token (config)))}
-     :body (str "{\"query\": \"" (s/replace query #"\n" "") "\"}")
+     :body (str "{\"query\": \"" (string/replace query #"\n" "") "\"}")
      :as :json}))
 
 (defn email->username [email]
-  (first (s/split email #"\@")))
+  (first (string/split email #"\@")))
 
 ;;; data
 
@@ -129,15 +149,36 @@
     (r/org-repos
       org-name (merge auth {:per-page 100}))))
 
+
+(defn repo-topics [user repo]
+  (with-url
+    endpoint
+    (r/list-topics user repo auth)))
+
+(defn repo-update-topics [owner repo options]
+  (with-url
+    endpoint
+    (r/update-topics owner repo (merge auth options))))
+
 (comment
+
+  (repo-update-topics
+   "yetibot" "yetibot" {:names ["chatbot"
+                                "chatops"
+                                "clojure"
+                                "slack"
+                                "irc"
+                                "automation"
+                                "docker"
+                                "unix-pipes"
+                                "yetibot"]})
+
+  (repo-topics "yetibot" "yetibot")
 
   (with-url
     endpoint
     (r/org-repos
-      "yetibot" (merge auth {:per-page 100})))
-
-  )
-
+     "yetibot" (merge auth {:per-page 100}))))
 
 (defn repos-by-org []
   (into {} (for [org-name (org-names)]
@@ -246,12 +287,33 @@
             (search/search-code
               keywords (merge {} query) auth)))
 
+(defn search-repos [keywords & [query opts]]
+  (with-url endpoint
+    (search/search-repos
+     keywords (merge {} query) auth)))
+
+(defn search-topics [keywords & [query opts]]
+  (with-url endpoint
+            (search/search-topics
+              keywords (merge {} query) auth)))
+
 (comment
+
+  (->> (search-repos "topic:yetibot")
+       :items
+       (map :html_url))
+
+  (search-topics "yetibot")
+
+  (search-topics "clojure")
 
   (search-pull-requests "yetibot" "")
 
   (search-code "org:yetibot cmd-hook")
 
+  (->> (search-code "topic:yetibot")
+       :items
+       (map :html_url))
   )
 
 ;;; events / feed
@@ -261,22 +323,22 @@
 (defmethod fmt-event "PushEvent" [e]
   (into [(str (-> e :actor :login)
               " pushed to "
-              (s/replace (-> e :payload :ref) "refs/heads/" "")
+              (string/replace (-> e :payload :ref) "refs/heads/" "")
               " at "
               (-> e :repo :name))]
         (map (fn [{:keys [author sha message]}]
                (str "* "
-                    (s/join (take 7 sha))
+                    (string/join (take 7 sha))
                     " "
                     message
                     " [" (:name author) "]"))
              (-> e :payload :commits))))
 
 (defmethod fmt-event :default [e]
-  (s/join " "
-          [(-> e :actor :login)
-           (:type e)
-           (:payload e)]))
+  (string/join " "
+               [(-> e :actor :login)
+                (:type e)
+                (:payload e)]))
 
 (defn fmt-events
   [evts]

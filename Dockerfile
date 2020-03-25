@@ -4,7 +4,7 @@ FROM clojure:openjdk-11-lein
 
 MAINTAINER Trevor Hartman <trevorhartman@gmail.com>
 
-EXPOSE 3000
+EXPOSE 3003
 
 ENV WORKDIR /usr/src/app
 ENV LOGDIR /var/log/yetibot
@@ -24,6 +24,8 @@ COPY .java.policy $WORKDIR/.java.policy
 # overwrite the default location for linux
 COPY .java.policy /docker-java-home/jre/lib/security/java.policy
 
+# prepare ssh
+RUN mkdir -p /root/.ssh && touch /root/.ssh/known_hosts
 
 WORKDIR $WORKDIR
 
@@ -32,5 +34,7 @@ RUN lein deps
 VOLUME $WORKDIR/config/
 
 VOLUME $LOGDIR
+
+HEALTHCHECK CMD curl --fail http://localhost:3003/healthz || exit 1
 
 CMD ["lein", "with-profile", "+docker", "run"]

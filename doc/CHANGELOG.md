@@ -1,10 +1,165 @@
 # Yetibot changelog
 
-Note: `yetibot` depends on [yetibot.core](https://github.com/yetibot/yetibot.core)
+Note: `yetibot` depends on [yetibot/core](https://github.com/yetibot/yetibot.core)
 which contains Yetibot's core functionality along with a few commands. See
-[yetibot.core's
-cpihangelog](https://github.com/yetibot/yetibot.core/blob/master/doc/CHANGELOG.md)
+[yetibot/core's
+changelog](https://github.com/yetibot/yetibot.core/blob/master/doc/CHANGELOG.md)
 as well.
+
+## 0.5.62 - 3/24/20
+
+- Upgrade to `yetibot/core "20200325.004847.aa02185"`
+
+## 0.5.61 - 3/23/20
+
+- Upgrade to `yetibot/core "20200323.223524.9b17527"`
+
+## 0.5.60 - 3/15/20
+
+- Remove accidental dupe yetibot/core dep
+
+## 0.5.59 - 3/15/20
+
+- [Add csv command #1006](https://github.com/yetibot/yetibot/pull/1006)
+
+## 0.5.58 - 3/3/20
+
+- [Add JIRA priority support
+  #1004](https://github.com/yetibot/yetibot/pull/1004)
+
+## 0.5.57 - 3/2/20
+
+- [Remove lazy json parsing in jira and add username query param to user search #1002](https://github.com/yetibot/yetibot/pull/1002)
+
+## 0.5.56 - 3/2/20
+
+- Upgrade to `yetibot/core "20200302.181517.2c05eb0"`. This fixes a dependency
+  that caused Slack websocket connection to stop working.
+
+## 0.5.55 - 2/27/20
+
+- Upgrade to `yetibot/core "20200227.180915.e29cec8"`. This fixes the Slack
+  adapter that was broken in `0.5.54`.
+
+## 0.5.54 - 2/26/20
+
+- Upgrade to `yetibot/core "20200226.184017.75c0157"`. This upgrade adds support
+  for the [Mattermost](https://mattermost.org/) chat platform! 🎉🎉🎉
+
+## 0.5.53 - 2/19/20
+
+- Upgrade to `yetibot/core "20200219.223432.7b72073"`
+
+## 0.5.52 - 11/11/19
+
+- Upgrade to `yetibot/core "20191107.221752.a4aa424"`
+- Upgrade all dependencies and exclude `org.flatland/useful`'s outdated
+  `org.clojure/tools.reader` dep
+- Add JIRA enhancements - [#981](https://github.com/yetibot/yetibot/pull/981)
+
+  Includes:
+
+  - Add issue type to short format
+  - Support listing subtasks in `jira show <issue>`
+  - Add ability to list or search for projects with `jira projects <query>`
+  - Add ability to list or search for users with `jira users <query>`
+
+## 0.5.51 - 10/29/19
+
+- Upgrade to `yetibot/core "20191017.211644.6ee48e9"`
+
+## 0.5.50 - 10/28/19
+
+- Add support for oauth1 in JIRA API -
+  [#974](https://github.com/yetibot/yetibot/pull/974)
+
+## 0.5.49 - 10/17/19
+
+- Upgrade to `yetibot/core "20191017.211644.6ee48e9"`
+
+## 0.5.48 - 10/11/19
+
+- Add auth when listing github topics
+  [#969](Add auth when listing github topics #969)
+
+## 0.5.47 - 10/11/19
+
+- Upgrade to `yetibot/core "20191011.182438.972beb3"`
+
+## 0.5.46 - 10/9/19
+
+- Upgrade to `yetibot/core "20191009.221933.8c538c8"`
+
+## 0.5.45 - 10/8/19
+
+- Detect if GitHub API is enterprise and link topic search results to web search
+  instead of explore topics since there is not full parity between github.com
+  and GitHub Enterprise
+
+## 0.5.44 - 10/8/19
+
+- Fix base URL for GitHub instance when listing topics via
+  `gh search topics <query>`
+
+## 0.5.43 - 10/8/19
+
+- Add additional github search and topics commands –
+  [#964](https://github.com/yetibot/yetibot/pull/964)
+
+  ```
+  gh search repos <query> # search GitHub repos for <query>
+  gh search <query> # search GitHub code for <query>
+  gh search topics <query> # search GitHub topics for <query>
+  gh topics <org-name>/<repo> # list topics for a repo
+  gh topics set <owner>/<repo> <collection or space-separated list of topics>
+  ```
+
+## 0.5.42 - 10/7/19
+
+- Upgrade to `yetibot/core "20191007.181520.9b061e6"`. This fixes a bug in
+  monitoring that prevented Yetibot from starting up and instead erring with
+  something like:
+
+  ```
+  Exception in thread "main" java.lang.IllegalArgumentException: hostname can't be null
+  ```
+
+- Add healthcheck to Dockerfile
+  [#966](https://github.com/yetibot/yetibot/pull/966)
+
+## 0.5.41 - 9/13/19
+
+- Upgrade to `yetibot/core "20190913.182757.1838a79"`
+
+## 0.5.40 - 9/10/19
+
+- Upgrade to `yetibot/core "20190910.175122.9e253dd"`
+
+## 0.5.39 - 9/10/19
+
+- Switch from schema to clojure.spec -
+  [#959](https://github.com/yetibot/yetibot/pull/959/) by
+  [anthonygalea](https://github.com/anthonygalea)
+- Upgrade to `yetibot/core "20190905.175835.fe16ae2"`
+
+## 0.5.38 - 9/3/19
+
+- Upgrade to `yetibot/core "20190903.160748.0779ab8"`
+
+## 0.5.37 - 8/30/19
+
+- Upgrade to `yetibot/core "20190830.225726.6817bc3"`
+
+## 0.5.36 - 8/30/19
+
+- Add `tldr` command - [#958](https://github.com/yetibot/yetibot/pull/958) by
+  [anthonygalea](https://github.com/anthonygalea)
+- Upgrade to `yetibot/core "20190830.212304.0be0d9e"`
+
+## 0.5.35 - 8/26/19
+
+- Add `man` command - [#957](https://github.com/yetibot/yetibot/pull/957) by
+  [anthonygalea](https://github.com/anthonygalea)
 
 ## 0.5.32 - 5/17/2019
 
